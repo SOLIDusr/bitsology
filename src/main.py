@@ -7,6 +7,7 @@ import subprocess
 import os
 import datetime
 import sys
+import requests
 
 
 class Picture:
@@ -29,6 +30,11 @@ class Picture:
 class App:
     
     def __init__(self, mode, systemArg = None) -> None:
+        self.__version__ = "1.1.0-r"
+        try:
+            self.checkUpdates()
+        except VersionMismatch:
+            messagebox.showerror("App outdated.", "New version available, please update.")
         self.root = tk.Tk()
         self.uniqueCode = 0
         if mode == 1:
@@ -38,6 +44,16 @@ class App:
             else:
                 self.heavy_encoding(22, self.sysArg)
 
+    def checkUpdates(self):
+        repo_url = "https://api.github.com/repos/SOLIDusr/Bitsology/releases/latest"
+        try:
+            response = requests.get(repo_url)
+            response.raise_for_status()
+            latest_version = response.json()["tag_name"]
+            if self.__version__ != latest_version:
+                raise VersionMismatch(f"Current version: {self.__version__}, Latest version: {latest_version}")
+        except requests.RequestException as e:
+            messagebox.showerror("Error", f"Failed to check for updates: {e}")
 
     def copyToClipboard(self, text):
         process = subprocess.Popen(['clip.exe'], stdin=subprocess.PIPE, text=True)
@@ -60,7 +76,6 @@ class App:
                 else:
                     newpass += shadpass[i]
         return newpass
-        
     
     def selectFile(self):
         filePath = filedialog.askopenfilename(
@@ -80,13 +95,11 @@ class App:
         self.root.geometry("600x300")
         self.root.title("Bitsology")
 
-        # Entry for password length
         passlengthLabel = tk.Label(self.root, text="Enter password length (3-36):")
         passlengthEntry = tk.Entry(self.root, width=10)
         passlengthLabel.pack(pady=10)
         passlengthEntry.pack(pady=10)
 
-        # Function to validate and get password length
         def get_pass_length():
             try:
                 length = int(passlengthEntry.get())
@@ -96,18 +109,13 @@ class App:
                     return 22
             except ValueError:
                 return 22
-
-        # Light Encoding button
+            
         lightButton = tk.Button(self.root, text="Light Encoding", command=lambda: self.light_encoding(get_pass_length()))
         lightButton.pack(pady=20)
-
-        # Heavy Encoding button
         heavyButton = tk.Button(self.root, text="Heavy Encoding", command=lambda: self.heavy_encoding(get_pass_length()))
         heavyButton.pack(pady=20)
-
         deleteButton = tk.Button(self.root, text="Delete custom encoding", command=lambda: self.delete_custom_encoding())
         deleteButton.pack(pady=20)
-
         self.root.mainloop()
     
     def delete_custom_encoding(self):
@@ -243,7 +251,14 @@ class App:
         print(mypass)
         self.copyToClipboard(mypass)
         messagebox.showinfo("Password copied to clipboard", f"Your password is: {mypass}")
-        
+
+
+class VersionMismatch(Exception):
+    def __init__(self, message="Version mismatch error"):
+        self.message = message
+        super().__init__(self.message)
+
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
