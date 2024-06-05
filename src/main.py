@@ -1,82 +1,147 @@
 import binascii
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from PIL import Image
+import hashlib 
+import subprocess
 import os
 
-def select_image_file():
-    root = tk.Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename(
+
+class Picture:
+    def __init__(self, path) -> None:
+        self.path = path
+        self.image = Image.open(path)
+        self.width, self.height = self.image.size
+        self.hexCode = binascii.hexlify(open(path, "rb").read()).decode("utf-8")
+        self.wayCode = ""
+    
+    def get_center_pixel(self):
+        return self.image.getpixel((self.width // 2, self.height // 2))
+    
+    def generate_light_code(self, way, passlength):
+        for i in range(way, way + passlength):
+            self.wayCode += self.hexCode[i]
+        return self.wayCode
+
+class App:
+    
+    def __init__(self) -> None:
+        self.root = tk.Tk()
+        self.uniqueCode = 0
+
+    def copyToClipboard(self, text):
+        process = subprocess.Popen(['clip.exe'], stdin=subprocess.PIPE, text=True)
+        process.communicate(input=text)
+        
+    
+    def shufflepassword(self, password, factor,passlen):
+        shadpass = hashlib.sha256(password.encode()).hexdigest()[:passlen]
+        newpass = ""
+        specials = "!@#$%&="
+        for i in range(len(shadpass)):
+            if i in range(factor):
+                if i % 2 == 0:
+                    newpass += shadpass[i].upper()
+                else:
+                    newpass += shadpass[i]
+            else:
+                if i % 3 == 0:
+                    newpass += specials[i % len(specials)]
+                else:
+                    newpass += shadpass[i]
+        return newpass
+        
+    
+    def selectFile(self):
+        filePath = filedialog.askopenfilename(
         title="Select an Image",
-        filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")]
-    )
-    return file_path
+        filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")])
+        if not filePath:
+            messagebox.showerror("Error", "No file selected")
+            return
+        return filePath
+    
+    def calculateWayAndFactorPixel(self, center_pixel):
+        if isinstance(center_pixel, int):
+            return center_pixel, center_pixel
+        return sum(center_pixel), center_pixel[0]
+    
+    def guiInit(self):
+        self.root.geometry("600x300")
+        self.root.title("Bitsology")
 
-def get_center_pixel(image):
-    width, height = image.size
-    return image.getpixel((width // 2, height // 2))
+        # Entry for password length
+        passlengthLabel = tk.Label(self.root, text="Enter password length (3-36):")
+        passlengthEntry = tk.Entry(self.root, width=10)
+        passlengthLabel.pack(pady=10)
+        passlengthEntry.pack(pady=10)
 
-def calculate_way_and_factorpixel(center_pixel):
-    if isinstance(center_pixel, int):
-        return center_pixel, center_pixel
-    return sum(center_pixel), center_pixel[0]
+        # Function to validate and get password length
+        def get_pass_length():
+            try:
+                length = int(passlengthEntry.get())
+                if 3 <= length <= 36:
+                    return length
+                else:
+                    return 22
+            except ValueError:
+                return 22
 
-def generate_password(hex_content, way, passlen=22):
-    password = ""
-    for i in range(way, way + passlen):
-        password += hex_content[i]
-    return password
+        # Light Encoding button
+        lightButton = tk.Button(self.root, text="Light Encoding", command=lambda: self.light_encoding(get_pass_length()))
+        lightButton.pack(pady=20)
 
-def transform_password(password, factorpixel, passlen=22):
-    if factorpixel % 100 > passlen // 3 * 2:
-        factor = passlen // 3 * 2
-    elif factorpixel % 100 > passlen // 3:
-        factor = passlen // 3
-    else:
-        factor = passlen // 2
+        # Heavy Encoding button
+        heavyButton = tk.Button(self.root, text="Heavy Encoding", command=lambda: self.heavy_encoding(get_pass_length()))
+        heavyButton.pack(pady=20)
 
-    alphabet = 'abcdefghijklmnopqrstuvwxyz'
-    special_symbols = '!@#$%&*'
-    password_list = list(password)
-
-    for i in range(len(password_list)):
-        if i < factor:
-            if password_list[i].isdigit():
-                password_list[i] = alphabet[int(password_list[i]) % 26]
-            if (i + 1) % 3 == 0:
-                password_list[i] = password_list[i].upper()
+        self.root.mainloop()
+    
+    def light_encoding(self, passlength):
+        filePath = self.selectFile()
+        if not filePath:
+            return
+        picture = Picture(filePath)
+        centerPixel = picture.get_center_pixel()
+        way, factorpixel = self.calculateWayAndFactorPixel(centerPixel)
+        rawpassword = picture.generate_light_code(way=way, passlength=passlength)
+        if factorpixel % 100 > passlength // 3 * 2:
+            factor = passlength // 3 * 2
+        elif factorpixel % 100 > passlength // 3:
+            factor = passlength // 3
         else:
-            if password_list[i].isdigit():
-                if (i - factor) % 2 == 0:
-                    password_list[i] = special_symbols[int(password_list[i]) % len(special_symbols)]
-
-    return ''.join(password_list)
-
-def main():
-    file_path = select_image_file()
-    if not file_path:
-        print("No file selected.")
-        return
-
-    try:
-        image = Image.open(file_path)
-        center_pixel = get_center_pixel(image)
-        way, factorpixel = calculate_way_and_factorpixel(center_pixel)
-
-        with open(file_path, "rb") as file:
-            content = file.read()
-            hex_content = binascii.hexlify(content).decode('utf-8')
-
-        password = generate_password(hex_content, way)
-        new_password = transform_password(password, factorpixel)
-        print(new_password)
-
-        with open(f"{new_password}.txt", "w") as f:
-            f.write("")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+            factor = passlength // 2
+        
+        passwd = self.shufflepassword(password=rawpassword, factor=factor, passlen=passlength)
+        self.copyToClipboard(passwd)
+        messagebox.showinfo("Password copied to clipboard", f"Your password is: {passwd}")
+    
+    def getCEncPars(self):
+        
+    
+    
+    def heavy_encoding(self, passlength):
+        
+        dirpath = os.path.expanduser("~/AppData/Roaming/Bitsology/")
+        filepath = os.path.expanduser("~/AppData/Roaming/Bitsology/custom_enc.png")
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+        else:
+            print("Dir Found")
+        if not os.path.exists(filepath):
+            if not messagebox.askokcancel("Warning", "No custom encoding file found, do you want to create a new one?"):
+                return
+            
+            
+            
+        # print(customEnc)
+        # if not filePath:
+        #     return
+        # picture = Picture(filePath)
+        # centerPixel = picture.get_center_pixel()
+        # way, factorpixel = self.calculateWayAndFactorPixel(centerPixel)
+        
 
 if __name__ == "__main__":
-    main()
+    app = App()
+    app.guiInit()
