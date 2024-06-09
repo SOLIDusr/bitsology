@@ -15,7 +15,7 @@ class App:
 
     def __init__(self, mode, systemArg=None) -> None:
         # pre-start update
-        self.version = Version("v.1.3.0-r1")
+        self.version = Version("v.1.3.1-r8")
         self.checkUpdates()
         if not os.path.exists("settings.properties"):
             self.createsettings()
@@ -27,16 +27,17 @@ class App:
         self.root = tk.Tk()
         self.root.resizable(False, False)
         self.root.geometry("500x400")
+
         self.root.title("Bitsology")
         self.encoder = Encoder()
         # end gui init
         # start mode check
         if mode == 1:
             self.systemArg = systemArg
-            if messagebox.askyesno("Warning", "Use the light encoding?"):
-                self.lightEncoding(22, self.systemArg)
+            if messagebox.askquestion(title="Attention.", message="Use heavy encoding?") == "now":
+                self.lightEncode(passlen=22, file=self.systemArg)
             else:
-                self.heavyEncoding(22, self.systemArg)
+                self.heavyEncode(passlen=22, file=self.systemArg)
         else:
             self.systemArg = None
             self.guiInit()
@@ -71,13 +72,14 @@ class App:
         file = configparser.ConfigParser()
         file.add_section("Path Variables")
         file.set("Path Variables", "path", "~/AppData/Roaming/Bitsology/custom_enc.png")
-        with open("settings.properties", "w") as f:
+        file.set("Path Variables", "root", "C:/Program Files/Bitsology")
+        with open("C:/Program Files/Bitsology/settings.properties", "w") as f:
             file.write(f)
             f.close()
 
     def loadsettings(self):
         file = configparser.ConfigParser()
-        file.read("settings.properties")
+        file.read("C:/Program Files/Bitsology/settings.properties")
         self.rootdirectory = file.get("Path Variables", "path")
 
     def saverootdirectory(self):
@@ -125,10 +127,6 @@ class App:
 
             lightEncodeButton = tk.Button(leftUpperFrame, text="Light encode", command=lambda: self.lightEncode(self.selectedFilePath if self.selectedFilePath else None, passwordLengthSlider.get()))
             lightEncodeButton.pack(pady=5)
-
-            openEditorButton = tk.Button(leftUpperFrame, text="Open In Editor", command=lambda: self.openEditor(self.selectedFilePath if self.selectedFilePath else None))
-            openEditorButton.pack(pady=5)
-        
 
             # Left bottom section
             rightFrame = tk.Frame(self.root)
@@ -179,7 +177,7 @@ class App:
 
     def heavyEncode(self, file = None, passlen = 22):
         file = self.systemArg if file == None else file
-        self.copyToClipboard(self.encoder.heavyEncoding(passlen, file))
+        self.copyToClipboard(self.encoder.heavyEncoding(externalFile=file, passLength=passlen))
 
     def lightEncode(self, file = None, passlen = 22):
         file = self.systemArg if file == None else file
