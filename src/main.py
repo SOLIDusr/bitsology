@@ -8,17 +8,15 @@ from picture import Picture
 from encoder import Encoder
 import configparser
 import binascii
+from version import Version
 
 
 class App:
 
     def __init__(self, mode, systemArg=None) -> None:
         # pre-start update
-        self.version = "1.2.0-r"
-        try:
-            self.checkUpdates()
-        except VersionMismatch:
-            messagebox.showerror("App outdated.", "New version available, please update.")
+        self.version = Version("v.1.3.0-r1")
+        self.checkUpdates()
         if not os.path.exists("settings.properties"):
             self.createsettings()
         # end pre-start update
@@ -28,7 +26,7 @@ class App:
         # start gui init
         self.root = tk.Tk()
         self.root.resizable(False, False)
-        self.root.geometry("1000x600")
+        self.root.geometry("500x400")
         self.root.title("Bitsology")
         self.encoder = Encoder()
         # end gui init
@@ -50,10 +48,22 @@ class App:
         try:
             response = requests.get(repoUrl)
             response.raise_for_status()
-            latestVersion = response.json()["tag_name"]
-            if self.version != latestVersion:
-                print(f"Current version: {self.version}, Latest version: {latestVersion}")
-                raise VersionMismatch(f"Current version: {self.version}, Latest version: {latestVersion}")
+            latestVersion = Version(response.json()["tag_name"])
+            match self.version.__eq__(latestVersion):
+                case 5:
+                    messagebox.showerror(f"New version available", f"New major version available, please update")
+                case 4:
+                    messagebox.showerror(f"New version available", f"New version available, please update")
+                case 3:
+                    messagebox.showerror("New patch available", "New patch available, please update")
+                case 2:
+                    messagebox.showerror("Warning!", "You are using a beta version.")
+                case -1:
+                    messagebox.showerror("Warning!", "You are using an unreleased version.")
+                case _:
+                    pass
+            print(f"{self.version} -> {latestVersion}")
+
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to check for updates: {e}")
 
@@ -100,59 +110,53 @@ class App:
     # GUI init
 
     def guiInit(self):
-        # Left upper section
-        leftUpperFrame = tk.Frame(self.root)
-        leftUpperFrame.place(x=10, y=10, width=200, height=270)
-        self.selectedFilePath = None
-        self.fileToEncodeLabel = tk.Label(leftUpperFrame, text="Selected file", wraplength=100)
-        self.fileToEncodeLabel.pack(pady=5)
+        try:
+            leftUpperFrame = tk.Frame(self.root)
+            leftUpperFrame.place(x=10, y=10, width=200, height=270)
+            self.selectedFilePath = None
+            self.fileToEncodeLabel = tk.Label(leftUpperFrame, text="Selected file", wraplength=100)
+            self.fileToEncodeLabel.pack(pady=5)
 
-        selectFileButton = tk.Button(leftUpperFrame, text="Select", command=self.selectFileButton)
-        selectFileButton.pack(pady=5)
+            selectFileButton = tk.Button(leftUpperFrame, text="Select", command=self.selectFileButton)
+            selectFileButton.pack(pady=5)
 
-        heavyEncodeButton = tk.Button(leftUpperFrame, text="Heavy encode", command=lambda: self.heavyEncode(self.selectedFilePath if self.selectedFilePath else None, passwordLengthSlider.get()))
-        heavyEncodeButton.pack(pady=5)
+            heavyEncodeButton = tk.Button(leftUpperFrame, text="Heavy encode", command=lambda: self.heavyEncode(self.selectedFilePath if self.selectedFilePath else None, passwordLengthSlider.get()))
+            heavyEncodeButton.pack(pady=5)
 
-        lightEncodeButton = tk.Button(leftUpperFrame, text="Light encode", command=lambda: self.lightEncode(self.selectedFilePath if self.selectedFilePath else None, passwordLengthSlider.get()))
-        lightEncodeButton.pack(pady=5)
+            lightEncodeButton = tk.Button(leftUpperFrame, text="Light encode", command=lambda: self.lightEncode(self.selectedFilePath if self.selectedFilePath else None, passwordLengthSlider.get()))
+            lightEncodeButton.pack(pady=5)
 
-        openEditorButton = tk.Button(leftUpperFrame, text="Open In Editor", command=lambda: self.openEditor(self.selectedFilePath if self.selectedFilePath else None))
-        openEditorButton.pack(pady=5)
+            openEditorButton = tk.Button(leftUpperFrame, text="Open In Editor", command=lambda: self.openEditor(self.selectedFilePath if self.selectedFilePath else None))
+            openEditorButton.pack(pady=5)
         
-        passwordLengthSlider = tk.Scale(leftUpperFrame, from_=3, to=36, orient=tk.HORIZONTAL, length=200, label="Password length")
-        passwordLengthSlider.set(22)
-        passwordLengthSlider.pack(pady=5)
 
-        # Left bottom section
-        leftBottomFrame = tk.Frame(self.root)
-        leftBottomFrame.place(x=10, y=350, width=200, height=230)
+            # Left bottom section
+            rightFrame = tk.Frame(self.root)
+            rightFrame.place(x=260, y=10, width=200, height=270)
 
-        customEncodingKeyLabel = tk.Label(leftBottomFrame, text="Custom Encoding Key")
-        customEncodingKeyLabel.pack(pady=5)
+            customEncodingKeyLabel = tk.Label(rightFrame, text="Custom Encoding Key")
+            customEncodingKeyLabel.pack(pady=5)
 
-        self.CustomKeyPathLabel = tk.Label(leftBottomFrame, text=self.cutpath(self.rootdirectory), wraplength=100)
-        self.CustomKeyPathLabel.pack(pady=5)
+            self.CustomKeyPathLabel = tk.Label(rightFrame, text=self.cutpath(self.rootdirectory), wraplength=100)
+            self.CustomKeyPathLabel.pack(pady=5)
 
-        selectPathButton = tk.Button(leftBottomFrame, text="Select Path", command=self.selectKeyPathButton)
-        selectPathButton.pack(pady=5)
+            selectPathButton = tk.Button(rightFrame, text="Select Path", command=self.selectKeyPathButton)
+            selectPathButton.pack(pady=5)
 
-        deleteKeyButton = tk.Button(leftBottomFrame, text="Delete Key", command=self.deleteKey)
-        deleteKeyButton.pack(pady=5)
+            deleteKeyButton = tk.Button(rightFrame, text="Delete Key", command=self.deleteKey)
+            deleteKeyButton.pack(pady=5)
 
-        # Right section
-        rightFrame = tk.Frame(self.root)
-        rightFrame.place(x=220, y=10, width=760, height=580)
-
-        editorLabel = tk.Label(rightFrame, text="Editor")
-        editorLabel.pack(pady=5)
-
-        self.editorEntry = tk.Text(rightFrame, height=30, width=90)
-        self.editorEntry.pack(pady=5)
-
-        saveButton = tk.Button(rightFrame, text="Save", command=self.save)
-        saveButton.pack(pady=5)
-
-        self.root.mainloop()
+            bottomFrame = tk.Frame(self.root)
+            bottomFrame.place(x=10, y=310, width=500, height=100)
+            passwordLengthSlider = tk.Scale(bottomFrame, from_=3, to=36, orient=tk.HORIZONTAL, length=200, label="Password length")
+            passwordLengthSlider.set(22)
+            passwordLengthSlider.pack(pady=5)
+            versionLabel = tk.Label(bottomFrame, text=f"Version: {self.version}")
+            versionLabel.pack(pady=5)
+            self.root.mainloop()
+        except tk._tkinter.TclError:
+            pass
+            
     
     def deleteKey(self):
         filePath = os.path.expanduser("~/AppData/Roaming/Bitsology/custom_enc.png")
@@ -175,44 +179,11 @@ class App:
 
     def heavyEncode(self, file = None, passlen = 22):
         file = self.systemArg if file == None else file
-        self.encoder.heavyEncoding(passlen, file)
+        self.copyToClipboard(self.encoder.heavyEncoding(passlen, file))
 
     def lightEncode(self, file = None, passlen = 22):
         file = self.systemArg if file == None else file
-        self.encoder.lightEncoding(passlen, file)
-
-    def openEditor(self, file: str):
-        messagebox.showinfo("Info", "WIP")
-        return
-        if not file:
-            return
-        pic = Picture(file)
-        way, _ = self.encoder.calculateWayAndFactorPixel(pic.getCenterPixel())
-        self.hex = pic.hexCode
-        if self.hex[way:][:3] == "<Type>":
-            textToInsert = ""
-            i = way+6
-            while True:
-                if self.hex[i:i+7] == "</Type>":
-                    break
-                textToInsert += self.hex[i]
-                i += 1
-
-            self.editorEntry.insert(1.0, textToInsert)
-        else:
-            self.editorEntry.insert(1.0, "Blank")
-
-    def save(self):
-        messagebox.showinfo("Info", "WIP")
-        return
-        content = self.editorEntry.get("1.0", tk.END).replace(" ", "").replace("\n", "")
-        pic = Picture(self.selectedFilePath)
-        way, _ = self.encoder.calculateWayAndFactorPixel(pic.getCenterPixel())
-        self.hex = pic.hexCode
-        writedata = self.hex + content
-        file = open(self.selectedFilePath, "wb")
-        file.write(writedata.encode("utf-8"))
-        file.close()
+        self.copyToClipboard(self.encoder.lightEncoding(passlen, file))
 
     def selectKeyPathButton(self):
         path = filedialog.askopenfilename(
@@ -236,13 +207,7 @@ class App:
             self.fileToEncodeLabel.config(text=self.cutpath(path))
         else:
             messagebox.showerror("Error", "No path selected")
-
-
-class VersionMismatch(Exception):
-    def __init__(self, message="Version mismatch error"):
-        self.message = message
-        super().__init__(self.message)
-
+            
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

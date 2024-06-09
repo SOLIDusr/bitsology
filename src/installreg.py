@@ -57,6 +57,7 @@ def remove_from_context_menu():
 
 def remove_application():
     target_path = r"C:\Program Files\Bitsology\Bitsology.exe"
+    target_path2 = r"C:\Program Files\Bitsology\installreg.exe"
     shortcut_path = os.path.join(os.environ['APPDATA'], r'Microsoft\Windows\Start Menu\Programs\Bitsology.lnk')
 
     try:
@@ -66,6 +67,13 @@ def remove_application():
             messagebox.showinfo("Success", "Bitsology.exe removed successfully from Program Files.")
         else:
             messagebox.showwarning("Warning", "Bitsology.exe not found in Program Files.")
+        if os.path.exists(target_path2):
+            os.remove(target_path2)
+            shutil.rmtree(os.path.dirname(target_path2), ignore_errors=True)
+            messagebox.showinfo("Success", "installreg.exe removed successfully from Program Files.")
+        else:
+            messagebox.showwarning("Warning", "installreg.exe not found in Program Files.")
+            
     except Exception as e:
         messagebox.showerror("Error", f"Failed to remove Bitsology.exe: {e}")
 
