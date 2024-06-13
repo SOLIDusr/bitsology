@@ -15,13 +15,16 @@ class App:
 
     def __init__(self, mode, systemArg=None) -> None:
         # pre-start update
-        self.version = Version("v.1.3.1-r8")
+        self.version = Version("v.1.3.1-r12")
         self.checkUpdates()
-        if not os.path.exists("settings.properties"):
-            self.createsettings()
-        # end pre-start update
-        # start load settings
-        self.loadsettings()
+        try:
+            if not os.path.exists("settings.properties"):
+                self.createsettings()
+            # end pre-start update
+            # start load settings
+            self.loadsettings()
+        except PermissionError as e:
+            self.rootdirectory = os.path.expanduser("~/AppData/Roaming/Bitsology/custom_enc.png")
         # end load settings
         # start gui init
         self.root = tk.Tk()

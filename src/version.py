@@ -33,6 +33,7 @@ class Version:
 
     def parce(self, vString: str):
         vString = vString.replace("v.", "")
+        vString = vString.replace("v", "")
         vString = vString.replace("-", ".")
         vString = vString.split(".")
         vMajor = ""
