@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import messagebox
 import win32com.client as client
 
+
 def add_to_context_menu():
     exe_files = ["main.exe"]
     target_dir = r"C:\Program Files\Bitsology"
