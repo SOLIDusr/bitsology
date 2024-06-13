@@ -25,7 +25,7 @@ class Encoder:
                     index += 3
                 else:
                     index = 0
-                return image
+        return image
 
     def getCEncPars(self) -> str:
         return uuid.uuid1().hex
@@ -119,4 +119,4 @@ class Encoder:
         password = self.encode(rawPass=rawPass, cEnc=encoding)
         messagebox.showinfo("Password copied to clipboard", f"Your password is: {password}")
         return password
-
+    
